@@ -1,0 +1,272 @@
+import { useState, useEffect } from "react";
+
+const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+
+function calcRating({ att, comp, yards, td, int: ints }) {
+  if (!att || att === 0) return null;
+  const a = clamp(((comp / att) - 0.3) * 5, 0, 2.375);
+  const b = clamp(((yards / att) - 3) * 0.25, 0, 2.375);
+  const c = clamp((td / att) * 20, 0, 2.375);
+  const d = clamp(2.375 - ((ints / att) * 25), 0, 2.375);
+  return ((a + b + c + d) / 6) * 100;
+}
+
+function getRatingLabel(r) {
+  if (r === null) return { label: "—", color: "#888" };
+  if (r >= 158.3) return { label: "PERFECT", color: "#FFD700" };
+  if (r >= 120) return { label: "ELITE", color: "#00E5FF" };
+  if (r >= 100) return { label: "GREAT", color: "#69FF47" };
+  if (r >= 85) return { label: "GOOD", color: "#B2FF59" };
+  if (r >= 70) return { label: "AVERAGE", color: "#FFCA28" };
+  if (r >= 50) return { label: "POOR", color: "#FF7043" };
+  return { label: "AWFUL", color: "#FF1744" };
+}
+
+const fields = [
+  { key: "att", label: "ATTEMPTS", icon: "🏈", hint: "Pass attempts" },
+  { key: "comp", label: "COMPLETIONS", icon: "✅", hint: "Completed passes" },
+  { key: "yards", label: "PASS YARDS", icon: "📏", hint: "Total passing yards" },
+  { key: "td", label: "TOUCHDOWNS", icon: "🙌", hint: "TD passes" },
+  { key: "int", label: "INTERCEPTIONS", icon: "🚫", hint: "Interceptions thrown" },
+];
+
+export default function App() {
+  const [vals, setVals] = useState({ att: "", comp: "", yards: "", td: "", int: "" });
+  const [rating, setRating] = useState(null);
+  const [animate, setAnimate] = useState(false);
+
+  const parsed = Object.fromEntries(
+    Object.entries(vals).map(([k, v]) => [k, parseFloat(v) || 0])
+  );
+
+  const handleChange = (key, value) => {
+    setVals(p => ({ ...p, [key]: value }));
+  };
+
+  const handleCalc = () => {
+    const r = calcRating(parsed);
+    setRating(r);
+    setAnimate(false);
+    setTimeout(() => setAnimate(true), 10);
+  };
+
+  const handleReset = () => {
+    setVals({ att: "", comp: "", yards: "", td: "", int: "" });
+    setRating(null);
+    setAnimate(false);
+  };
+
+  const { label, color } = getRatingLabel(rating);
+  const pct = rating !== null ? Math.min((rating / 158.3) * 100, 100) : 0;
+
+  return (
+    <div style={{
+      minHeight: "100vh",
+      background: "#0a0a0f",
+      backgroundImage: "radial-gradient(ellipse 80% 50% at 50% -20%, #1a2a4a 0%, transparent 70%), repeating-linear-gradient(0deg, transparent, transparent 59px, rgba(255,255,255,0.02) 60px), repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(255,255,255,0.02) 60px)",
+      fontFamily: "'Bebas Neue', 'Impact', 'Arial Black', sans-serif",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      padding: "40px 20px 60px",
+      color: "#fff",
+    }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;600&display=swap');
+        * { box-sizing: border-box; }
+        .field-input {
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 6px;
+          color: #fff;
+          font-family: 'Barlow', sans-serif;
+          font-size: 22px;
+          font-weight: 600;
+          width: 100%;
+          padding: 14px 16px;
+          outline: none;
+          transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+          letter-spacing: 1px;
+        }
+        .field-input:focus {
+          border-color: rgba(0,180,255,0.6);
+          background: rgba(0,180,255,0.06);
+          box-shadow: 0 0 0 3px rgba(0,180,255,0.1);
+        }
+        .field-input::placeholder { color: rgba(255,255,255,0.2); }
+        .calc-btn {
+          background: linear-gradient(135deg, #1565C0, #0D47A1);
+          border: none;
+          border-radius: 8px;
+          color: #fff;
+          font-family: 'Bebas Neue', sans-serif;
+          font-size: 26px;
+          letter-spacing: 3px;
+          padding: 18px 60px;
+          cursor: pointer;
+          transition: transform 0.1s, box-shadow 0.2s;
+          box-shadow: 0 4px 20px rgba(21,101,192,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+        }
+        .calc-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(21,101,192,0.7), inset 0 1px 0 rgba(255,255,255,0.15); }
+        .calc-btn:active { transform: translateY(0px); }
+        .reset-btn {
+          background: transparent;
+          border: 1px solid rgba(255,255,255,0.2);
+          border-radius: 8px;
+          color: rgba(255,255,255,0.4);
+          font-family: 'Barlow', sans-serif;
+          font-size: 13px;
+          letter-spacing: 2px;
+          padding: 10px 28px;
+          cursor: pointer;
+          transition: all 0.2s;
+          text-transform: uppercase;
+        }
+        .reset-btn:hover { border-color: rgba(255,255,255,0.5); color: rgba(255,255,255,0.7); }
+        @keyframes scoreReveal {
+          0% { opacity: 0; transform: scale(0.6) translateY(20px); }
+          60% { transform: scale(1.08) translateY(-4px); }
+          100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes barFill {
+          from { width: 0%; }
+        }
+        @keyframes flashGlow {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+        .score-animate { animation: scoreReveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        .bar-animate { animation: barFill 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        .perfect-glow { animation: flashGlow 1.2s ease-in-out infinite; }
+      `}</style>
+
+      {/* Header */}
+      <div style={{ textAlign: "center", marginBottom: 40 }}>
+        <div style={{ fontSize: 13, letterSpacing: 6, color: "#1E88E5", marginBottom: 8, fontFamily: "'Barlow', sans-serif", fontWeight: 600 }}>NFL OFFICIAL</div>
+        <h1 style={{ fontSize: "clamp(42px, 8vw, 76px)", margin: 0, letterSpacing: 4, lineHeight: 0.9, textTransform: "uppercase" }}>
+          PASSER<br />
+          <span style={{ color: "#1E88E5" }}>RATING</span>
+        </h1>
+        <div style={{ fontSize: 13, letterSpacing: 4, color: "rgba(255,255,255,0.3)", marginTop: 10, fontFamily: "'Barlow', sans-serif", textTransform: "uppercase" }}>
+          Calculator
+        </div>
+      </div>
+
+      {/* Main Card */}
+      <div style={{
+        width: "100%",
+        maxWidth: 560,
+        background: "rgba(255,255,255,0.03)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: 16,
+        padding: "32px 28px",
+        backdropFilter: "blur(10px)",
+      }}>
+        <div style={{ display: "grid", gap: 14 }}>
+          {fields.map(({ key, label, icon, hint }) => (
+            <div key={key}>
+              <label style={{
+                display: "flex", alignItems: "center", gap: 8,
+                fontSize: 12, letterSpacing: 3, color: "rgba(255,255,255,0.45)",
+                marginBottom: 7, fontFamily: "'Barlow', sans-serif", fontWeight: 600,
+                textTransform: "uppercase"
+              }}>
+                <span>{icon}</span>{label}
+                <span style={{ marginLeft: "auto", fontSize: 11, letterSpacing: 1, color: "rgba(255,255,255,0.2)", fontWeight: 400 }}>{hint}</span>
+              </label>
+              <input
+                className="field-input"
+                type="number"
+                min="0"
+                placeholder="0"
+                value={vals[key]}
+                onChange={e => handleChange(key, e.target.value)}
+              />
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", gap: 12, marginTop: 28, alignItems: "center" }}>
+          <button className="calc-btn" onClick={handleCalc} style={{ flex: 1 }}>
+            CALCULATE
+          </button>
+          <button className="reset-btn" onClick={handleReset}>RESET</button>
+        </div>
+      </div>
+
+      {/* Result */}
+      {rating !== null && (
+        <div style={{
+          width: "100%", maxWidth: 560, marginTop: 28,
+          background: "rgba(255,255,255,0.03)",
+          border: `1px solid ${color}33`,
+          borderRadius: 16, padding: "32px 28px",
+          textAlign: "center",
+          boxShadow: `0 0 60px ${color}15`,
+        }}>
+          <div style={{ fontSize: 12, letterSpacing: 5, color: "rgba(255,255,255,0.4)", fontFamily: "'Barlow', sans-serif", fontWeight: 600, textTransform: "uppercase", marginBottom: 12 }}>
+            PASSER RATING
+          </div>
+
+          <div className={animate ? "score-animate" : ""} style={{ opacity: animate ? 1 : 0 }}>
+            <div className={label === "PERFECT" ? "perfect-glow" : ""} style={{
+              fontSize: "clamp(72px, 15vw, 110px)",
+              lineHeight: 1,
+              color,
+              textShadow: `0 0 40px ${color}60`,
+              letterSpacing: -2,
+            }}>
+              {rating.toFixed(1)}
+            </div>
+            <div style={{
+              fontSize: "clamp(22px, 5vw, 34px)",
+              letterSpacing: 6,
+              color,
+              marginTop: 4,
+              opacity: 0.85,
+            }}>
+              {label}
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div style={{ marginTop: 24, position: "relative" }}>
+            <div style={{
+              height: 6, background: "rgba(255,255,255,0.07)", borderRadius: 99, overflow: "hidden",
+            }}>
+              <div
+                className={animate ? "bar-animate" : ""}
+                style={{ height: "100%", width: `${pct}%`, background: `linear-gradient(90deg, #1565C0, ${color})`, borderRadius: 99 }}
+              />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontFamily: "'Barlow', sans-serif", fontSize: 11, color: "rgba(255,255,255,0.25)", letterSpacing: 1 }}>
+              <span>0</span><span>79 AVG</span><span>100 GOOD</span><span>158.3 MAX</span>
+            </div>
+          </div>
+
+          {/* Breakdown */}
+          <div style={{ marginTop: 24, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {[
+              { label: "Completion %", value: parsed.att ? `${((parsed.comp / parsed.att) * 100).toFixed(1)}%` : "—" },
+              { label: "Yards/Attempt", value: parsed.att ? (parsed.yards / parsed.att).toFixed(2) : "—" },
+              { label: "TD Rate", value: parsed.att ? `${((parsed.td / parsed.att) * 100).toFixed(1)}%` : "—" },
+              { label: "INT Rate", value: parsed.att ? `${((parsed.int / parsed.att) * 100).toFixed(1)}%` : "—" },
+            ].map(({ label, value }) => (
+              <div key={label} style={{
+                background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "12px 16px", textAlign: "left",
+              }}>
+                <div style={{ fontFamily: "'Barlow', sans-serif", fontSize: 11, color: "rgba(255,255,255,0.35)", letterSpacing: 2, textTransform: "uppercase", marginBottom: 4 }}>{label}</div>
+                <div style={{ fontSize: 22, letterSpacing: 1, color: "#fff" }}>{value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Footer note */}
+      <div style={{ marginTop: 32, fontFamily: "'Barlow', sans-serif", fontSize: 12, color: "rgba(255,255,255,0.2)", letterSpacing: 2, textAlign: "center", textTransform: "uppercase" }}>
+        Formula per NFL Official Rules · Max Rating 158.3
+      </div>
+    </div>
+  );
+}
